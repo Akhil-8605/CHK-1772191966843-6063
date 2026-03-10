@@ -82,8 +82,8 @@ function HomePage() {
           </p>
           <div className="cdash-hero__ctas">
             {localStorage.getItem('userToken') ? (
-              <a href="#services" className="btn-primary">
-                Explore Services
+              <a href="/citizen-dashboard" className="btn-primary">
+                Explore Citizen Dashboard
               </a>
             ) : (
               <a href="/login" className="btn-primary">

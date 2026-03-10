@@ -1,166 +1,145 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { registerUser } from "../../firebaseOperations/auth";
-import "./Signup.css";
-import Modi from "../modi.webp";
-import ImageKit from "imagekit-javascript";
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { registerUser } from '../../firebaseOperations/auth';
+import './Signup.css';
+import Modi from '../modi.webp';
+import ImageKit from 'imagekit-javascript';
+
+const DEPARTMENTS = ['Water', 'Electricity', 'Road Repair', 'Property Tax', 'Sanitation', 'Development'];
+
+async function uploadToImageKit(file) {
+  const authRes = await fetch(`${process.env.REACT_APP_BASE_URL}/auth`);
+  const authData = await authRes.json();
+
+  const imagekit = new ImageKit({
+    publicKey: process.env.REACT_APP_IMAGEKIT_PUBLIC_KEY,
+    urlEndpoint: process.env.REACT_APP_IMAGEKIT_URL_ENDPOINT,
+  });
+
+  const result = await imagekit.upload({
+    file,
+    fileName: `worker_doc_${Date.now()}_${file.name}`,
+    token: authData.token,
+    signature: authData.signature,
+    expire: authData.expire,
+    folder: '/worker-documents',
+  });
+  return result.url;
+}
 
 function Signup() {
   const navigate = useNavigate();
-  const [role, setRole] = useState("citizen");
+  const [role, setRole] = useState('citizen');
   const [formData, setFormData] = useState({
-    fullname: "",
-    email: "",
-    phone: "",
-    dob: "",
-    password: "",
-    confirmpass: "",
-    address: "",
-    city: "",
-    ward: "",
-    workerId: "",
-    department: "",
-    zone: "",
-    workingAddress: "",
+    fullname: '',
+    email: '',
+    phone: '',
+    dob: '',
+    password: '',
+    confirmpass: '',
+    address: '',
+    city: '',
+    ward: '',
+    workerId: '',
+    department: '',
+    zone: '',
+    workingAddress: '',
   });
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [otpLoading, setOtpLoading] = useState(false);
   const [workerDocument, setWorkerDocument] = useState(null);
-  const departments = [
-    "Water",
-    "Electricity",
-    "Road Repair",
-    "Property Tax",
-    "Sanitation",
-    "Development",
-  ];
+
   const handleChange = (e) => {
     const { id, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const uploadWorkerDocument = async (file) => {
-    try {
-      const authRes = await fetch(`${process.env.REACT_APP_BASE_URL}/auth`);
-      const authData = await authRes.json();
+  const validate = () => {
+    if (!formData.fullname.trim()) return 'Full name is required.';
+    if (!formData.email.trim()) return 'Email is required.';
+    if (!formData.phone.trim()) return 'Phone number is required.';
+    if (!formData.city) return 'Please select a city.';
+    if (formData.password.length < 8) return 'Password must be at least 8 characters.';
+    if (formData.password !== formData.confirmpass) return 'Passwords do not match.';
 
-      const imagekit = new ImageKit({
-        publicKey: process.env.REACT_APP_IMAGEKIT_PUBLIC_KEY,
-        urlEndpoint: process.env.REACT_APP_IMAGEKIT_URL_ENDPOINT,
-        authenticationEndpoint: `${process.env.REACT_APP_BASE_URL}/auth`,
-      });
-
-      const uploadResponse = await imagekit.upload({
-        file: file,
-        fileName: file.name,
-        token: authData.token,
-        signature: authData.signature,
-        expire: authData.expire,
-      });
-
-      return uploadResponse.url; // return uploaded file URL
-    } catch (err) {
-      console.error("ImageKit Upload Error:", err);
-      throw new Error("Failed to upload document");
+    if (role === 'citizen') {
+      if (!formData.address.trim()) return 'Residential address is required.';
     }
+
+    if (role === 'worker') {
+      if (!formData.workerId.trim()) return 'Worker ID is required.';
+      if (!formData.department) return 'Department is required.';
+      if (!formData.workingAddress.trim()) return 'Working address is required.';
+      if (!workerDocument) return 'Please upload your worker document.';
+    }
+    return null;
   };
 
   const handleSignup = async (e) => {
     e.preventDefault();
-
-    if (
-      !formData.fullname ||
-      !formData.email ||
-      !formData.phone ||
-      !formData.password ||
-      !formData.city
-    ) {
-      setError("Please fill in all required fields.");
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
-    if (
-      role === "worker" &&
-      (!formData.workerId ||
-        !formData.department ||
-        !formData.workingAddress ||
-        !workerDocument)
-    ) {
-      setError("Please complete all worker details and upload document.");
-      return;
-    }
-
-    if (role === "citizen" && !formData.address) {
-      setError("Please fill in residential address.");
-      return;
-    }
-
-    if (formData.password !== formData.confirmpass) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
       const extraData = {
-        displayName: formData.fullname,
-        phoneNumber: formData.phone,
+        displayName: formData.fullname.trim(),
+        phoneNumber: formData.phone.trim(),
         dob: formData.dob,
         city: formData.city,
-        createdAt: new Date(),
       };
 
-      // CITIZEN DATA
-      if (role === "citizen") {
-        extraData.address = formData.address;
-        extraData.ward = formData.ward;
+      if (role === 'citizen') {
+        extraData.address = formData.address.trim();
+        extraData.ward = formData.ward.trim();
       }
 
-      // WORKER DATA
-      if (role === "worker") {
-        extraData.workerId = formData.workerId;
+      if (role === 'worker') {
+        extraData.workerId = formData.workerId.trim();
         extraData.department = formData.department;
-        extraData.zone = formData.zone;
-        extraData.workingAddress = formData.workingAddress;
+        extraData.zone = formData.zone.trim();
+        extraData.workingAddress = formData.workingAddress.trim();
 
         // Upload document to ImageKit
-        const documentUrl = await uploadWorkerDocument(workerDocument);
-        extraData.workerDocument = documentUrl;
+        try {
+          const docUrl = await uploadToImageKit(workerDocument);
+          extraData.workerDocument = docUrl;
+        } catch {
+          setError('Failed to upload worker document. Please try again.');
+          setLoading(false);
+          return;
+        }
       }
 
-      // Create Firebase Auth + Firestore document
-      const { user } = await registerUser(
-        formData.email,
-        formData.password,
-        role,
-        extraData
-      );
-
+      const { user } = await registerUser(formData.email.trim(), formData.password, role, extraData);
       const token = await user.getIdToken();
 
-      // Auto login
-      localStorage.setItem("userToken", token);
-      localStorage.setItem("userRole", role);
-      localStorage.setItem("userData", JSON.stringify(extraData));
+      const userData = { ...extraData, uid: user.uid, email: user.email, role };
+      localStorage.setItem('userToken', token);
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('userData', JSON.stringify(userData));
 
-      // Redirect user
-      if (role === "citizen") {
-        navigate("/citizen-dashboard");
-      } else {
-        navigate("/worker");
-      }
+      setSuccess('Account created successfully! Redirecting...');
+      setTimeout(() => {
+        if (role === 'citizen') navigate('/citizen-dashboard');
+        else navigate('/worker');
+      }, 1200);
 
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Failed to create account.");
+      console.error('[Signup] Error:', err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please login.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password is too weak. Use at least 8 characters.');
+      } else {
+        setError(err.message || 'Failed to create account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -176,357 +155,200 @@ function Signup() {
           <h1 className="signup-hero__title">
             Join the Network
             <br />
-            <span className="text-saffron" style={{ fontWeight: "800" }}>
-              Urban Pragati
-            </span>
+            <span className="text-saffron" style={{ fontWeight: '800' }}>Urban Pragati</span>
           </h1>
-          <p className="signup-hero__sub">
-            Empowering citizens and workers to build better cities.
-          </p>
+          <p className="signup-hero__sub">Empowering citizens and workers to build better cities.</p>
         </div>
       </header>
+
       <main className="signup-main">
         <div className="signup-card">
           <div className="signup-card__header">
             <h2 className="section-title">Create an Account</h2>
-            <p className="section-subtitle">
-              Sign up to access your digital governance services.
-            </p>
+            <p className="section-subtitle">Sign up to access your digital governance services.</p>
           </div>
+
           <div className="role-toggle">
             <button
               type="button"
-              className={`role-btn ${role === "citizen" ? "active" : ""}`}
-              onClick={() => setRole("citizen")}
-              disabled={otpSent}
+              className={`role-btn ${role === 'citizen' ? 'active' : ''}`}
+              onClick={() => setRole('citizen')}
             >
               Citizen
             </button>
             <button
               type="button"
-              className={`role-btn ${role === "worker" ? "active" : ""}`}
-              onClick={() => setRole("worker")}
-              disabled={otpSent}
+              className={`role-btn ${role === 'worker' ? 'active' : ''}`}
+              onClick={() => setRole('worker')}
             >
               Municipal Worker
             </button>
           </div>
+
           <form className="signup-form" onSubmit={handleSignup} noValidate>
             {error && (
-              <div
-                style={{
-                  color: "red",
-                  marginBottom: "10px",
-                  textAlign: "center",
-                }}
-              >
+              <div className="form-error-box" role="alert">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
                 {error}
               </div>
             )}
+            {success && (
+              <div className="form-success-box" role="status">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                {success}
+              </div>
+            )}
+
+            {/* Personal Info */}
+            <div className="signup-section-label">Personal Information</div>
+
             <div className="signup-row">
               <div className="form-group">
-                <label htmlFor="fullname" className="form-label">
-                  Full Name *
-                </label>
-                <input
-                  id="fullname"
-                  type="text"
-                  className="form-input"
-                  placeholder="Name"
-                  value={formData.fullname}
-                  onChange={handleChange}
-                  disabled={otpSent}
-                />
+                <label htmlFor="fullname" className="form-label">Full Name *</label>
+                <input id="fullname" type="text" className="form-input" placeholder="Rajesh Kumar" value={formData.fullname} onChange={handleChange} required />
               </div>
               <div className="form-group">
-                <label htmlFor="email" className="form-label">
-                  Email Address *
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  className="form-input"
-                  placeholder="email@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  disabled={otpSent}
-                />
+                <label htmlFor="email" className="form-label">Email Address *</label>
+                <input id="email" type="email" className="form-input" placeholder="email@example.com" value={formData.email} onChange={handleChange} required />
               </div>
             </div>
+
             <div className="signup-row">
               <div className="form-group">
-                <label htmlFor="phone" className="form-label">
-                  Phone Number *
-                </label>
-                <input
-                  id="phone"
-                  type="tel"
-                  className="form-input"
-                  placeholder="+91 98765 43210"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  disabled={otpSent}
-                />
+                <label htmlFor="phone" className="form-label">Phone Number *</label>
+                <input id="phone" type="tel" className="form-input" placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} required />
               </div>
               <div className="form-group">
-                <label htmlFor="dob" className="form-label">
-                  Date of Birth
-                </label>
-                <input
-                  id="dob"
-                  type="date"
-                  className="form-input"
-                  value={formData.dob}
-                  onChange={handleChange}
-                  disabled={otpSent}
-                />
+                <label htmlFor="dob" className="form-label">Date of Birth</label>
+                <input id="dob" type="date" className="form-input" value={formData.dob} onChange={handleChange} />
               </div>
             </div>
+
+            {/* Address Info */}
+            <div className="signup-section-label">Location Details</div>
+
             <div className="signup-row">
               <div className="form-group">
-                <label htmlFor="city" className="form-label">
-                  City *
-                </label>
-                <select
-                  id="city"
-                  className="form-select"
-                  value={formData.city}
-                  onChange={handleChange}
-                  disabled={otpSent}
-                >
+                <label htmlFor="city" className="form-label">City *</label>
+                <select id="city" className="form-select" value={formData.city} onChange={handleChange} required>
                   <option value="">Select city</option>
                   <option>Solapur</option>
+                  <option>Pune</option>
+                  <option>Mumbai</option>
+                  <option>Nashik</option>
+                  <option>Nagpur</option>
                 </select>
               </div>
               <div className="form-group">
-                <label
-                  htmlFor={role === "citizen" ? "address" : "workingAddress"}
-                  className="form-label"
-                >
-                  {role === "citizen"
-                    ? "Residential Address *"
-                    : "Working Address *"}
+                <label htmlFor={role === 'citizen' ? 'address' : 'workingAddress'} className="form-label">
+                  {role === 'citizen' ? 'Residential Address *' : 'Working Address *'}
                 </label>
                 <input
-                  id={role === "citizen" ? "address" : "workingAddress"}
+                  id={role === 'citizen' ? 'address' : 'workingAddress'}
                   type="text"
                   className="form-input"
-                  placeholder="Address"
-                  value={
-                    role === "citizen"
-                      ? formData.address
-                      : formData.workingAddress
-                  }
+                  placeholder="Street, Ward, Sector"
+                  value={role === 'citizen' ? formData.address : formData.workingAddress}
                   onChange={handleChange}
-                  disabled={otpSent}
+                  required
                 />
               </div>
             </div>
-            {role === "citizen" && (
+
+            {role === 'citizen' && (
               <div className="form-group">
-                <label htmlFor="ward" className="form-label">
-                  Ward / Zone
-                </label>
-                <input
-                  id="ward"
-                  type="text"
-                  className="form-input"
-                  placeholder="Ward 14 — North Zone"
-                  value={formData.ward}
-                  onChange={handleChange}
-                  disabled={otpSent}
-                />
+                <label htmlFor="ward" className="form-label">Ward / Zone</label>
+                <input id="ward" type="text" className="form-input" placeholder="Ward 14 — North Zone" value={formData.ward} onChange={handleChange} />
               </div>
             )}
-            {role === "worker" && (
+
+            {/* Worker Fields */}
+            {role === 'worker' && (
               <>
+                <div className="signup-section-label">Worker Details</div>
                 <div className="signup-row">
                   <div className="form-group">
-                    <label htmlFor="workerId" className="form-label">
-                      Worker ID *
-                    </label>
-                    <input
-                      id="workerId"
-                      type="text"
-                      className="form-input"
-                      placeholder="WRK-XXX"
-                      value={formData.workerId}
-                      onChange={handleChange}
-                      disabled={otpSent}
-                    />
+                    <label htmlFor="workerId" className="form-label">Worker ID *</label>
+                    <input id="workerId" type="text" className="form-input" placeholder="WRK-XXX" value={formData.workerId} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="zone" className="form-label">
-                      Assigned Zone
-                    </label>
-                    <input
-                      id="zone"
-                      type="text"
-                      className="form-input"
-                      placeholder="North Zone"
-                      value={formData.zone}
-                      onChange={handleChange}
-                      disabled={otpSent}
-                    />
+                    <label htmlFor="zone" className="form-label">Assigned Zone</label>
+                    <input id="zone" type="text" className="form-input" placeholder="North Zone" value={formData.zone} onChange={handleChange} />
                   </div>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="department" className="form-label">
-                    Department *
-                  </label>
-                  <select
-                    id="department"
-                    className="form-select"
-                    value={formData.department}
-                    onChange={handleChange}
-                    disabled={otpSent}
-                  >
+                  <label htmlFor="department" className="form-label">Department *</label>
+                  <select id="department" className="form-select" value={formData.department} onChange={handleChange} required>
                     <option value="">Select your department</option>
-                    {departments.map((d) => (
-                      <option key={d}>{d}</option>
-                    ))}
+                    {DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Upload Worker Document *</label>
-
-                  <label className={`file-upload-area ${workerDocument ? "uploaded" : ""}`} htmlFor="idproof">
-
+                  <label className={`file-upload-area ${workerDocument ? 'uploaded' : ''}`} htmlFor="workerDoc">
                     {!workerDocument ? (
                       <>
-                        <span className="file-upload-area__text">
-                          Click to upload or drag & drop
-                        </span>
-                        <span className="file-upload-area__hint">
-                          PDF, JPG, PNG up to 5 MB
-                        </span>
+                        <span className="file-upload-area__text">Click to upload or drag &amp; drop</span>
+                        <span className="file-upload-area__hint">PDF, JPG, PNG up to 5 MB</span>
                       </>
                     ) : (
                       <>
-                        <span className="file-upload-success">✓ File Selected</span>
+                        <span className="file-upload-success">Document Selected</span>
                         <span className="file-upload-name">{workerDocument.name}</span>
                       </>
                     )}
-
-                    <input
-                      id="idproof"
-                      type="file"
-                      accept=".pdf,.jpg,.png"
-                      style={{ display: "none" }}
-                      onChange={(e) => setWorkerDocument(e.target.files[0])}
-                    />
-
+                    <input id="workerDoc" type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={(e) => setWorkerDocument(e.target.files[0])} />
                   </label>
                 </div>
               </>
             )}
+
+            {/* Password */}
+            <div className="signup-section-label">Security</div>
             <div className="signup-row">
               <div className="form-group">
-                <label htmlFor="password" className="form-label">
-                  Password *
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  className="form-input"
-                  placeholder="Min. 8 characters"
-                  autoComplete="new-password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  disabled={otpSent}
-                />
+                <label htmlFor="password" className="form-label">Password *</label>
+                <input id="password" type="password" className="form-input" placeholder="Min. 8 characters" autoComplete="new-password" value={formData.password} onChange={handleChange} required />
               </div>
               <div className="form-group">
-                <label htmlFor="confirmpass" className="form-label">
-                  Confirm Password *
-                </label>
-                <input
-                  id="confirmpass"
-                  type="password"
-                  className="form-input"
-                  placeholder="Repeat password"
-                  autoComplete="new-password"
-                  value={formData.confirmpass}
-                  onChange={handleChange}
-                  disabled={otpSent}
-                />
+                <label htmlFor="confirmpass" className="form-label">Confirm Password *</label>
+                <input id="confirmpass" type="password" className="form-input" placeholder="Repeat password" autoComplete="new-password" value={formData.confirmpass} onChange={handleChange} required />
               </div>
             </div>
-            {otpSent && (
-              <div
-                className="form-group slide-in"
-                style={{
-                  marginTop: "20px",
-                  padding: "20px",
-                  backgroundColor: "#fff3e0",
-                  borderLeft: "4px solid #ff7a18",
-                  borderRadius: "8px",
-                }}
-              >
-                <label
-                  htmlFor="otpCode"
-                  className="form-label"
-                  style={{ color: "#e65100" }}
-                >
-                  Enter SMS OTP sent to {formData.phone}
-                </label>
-                <input
-                  id="otpCode"
-                  type="text"
-                  className="form-input"
-                  placeholder="EX: 123456"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  style={{
-                    letterSpacing: "8px",
-                    fontSize: "1.2rem",
-                    textAlign: "center",
-                    fontWeight: "bold",
-                  }}
-                />
-              </div>
-            )}
+
             <div className="signup-actions">
-              {!otpSent ? (
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn btn-primary btn-lg"
-                  style={{ flex: 1, justifyContent: "center" }}
-                >
-                  {loading ? "Verifying..." : "Continue to Verification"}
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={otpLoading}
-                  className="btn btn-primary btn-lg"
-                  style={{ flex: 1, justifyContent: "center" }}
-                >
-                  {otpLoading
-                    ? "Verifying & Creating..."
-                    : "Verify & Create Account"}
-                </button>
-              )}
-              <Link
-                to="/login"
-                className="btn btn-outline btn-lg"
-                style={{ flex: 1, justifyContent: "center" }}
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn btn-primary btn-lg"
+                style={{ flex: 1, justifyContent: 'center' }}
               >
+                {loading ? (
+                  <>
+                    <span className="login-spinner" aria-hidden="true" />
+                    Creating Account...
+                  </>
+                ) : (
+                  role === 'worker' ? 'Register as Worker' : 'Create Citizen Account'
+                )}
+              </button>
+              <Link to="/login" className="btn btn-outline btn-lg" style={{ flex: 1, justifyContent: 'center' }}>
                 Already have an account?
               </Link>
             </div>
           </form>
         </div>
       </main>
+
       <footer className="signup-footer">
-        <p>
-          © 2026 Urban Pragati — Ministry of Housing and Urban Affairs,
-          Government of India
-        </p>
+        <p>© 2026 Urban Pragati — Ministry of Housing and Urban Affairs, Government of India</p>
       </footer>
     </div>
   );
 }
+
 export default Signup;

@@ -1,4 +1,5 @@
 @import '../../design-tokens.css';
+@import './WaterService.css';
 
 .voting-page {
   min-height: 100vh;

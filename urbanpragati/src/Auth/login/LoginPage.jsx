@@ -1,86 +1,65 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../firebase";
 import { loginUser } from '../../firebaseOperations/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import './LoginPage.css';
-import Modi from "../modi.webp";
+import Modi from '../modi.webp';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [viewPassword, setViewPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
     if (!email || !password) {
-      setError("Please provide both email and password.");
+      setError('Please provide both email and password.');
       return;
     }
-
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
-      let role = "";
-      let userData = null;
-      let token = "";
-
-      // ✅ ADMIN LOGIN FIRST (without firebase)
-      if (email === "urbanpragati@gmail.com" && password === "urbanpragati") {
-
-        role = "admin";
-        token = "admin-token"; // fake token for admin
-
-        localStorage.setItem("userToken", token);
-        localStorage.setItem("userRole", role);
-        localStorage.setItem("userData", JSON.stringify({ name: "Admin" }));
-
-        navigate("/admin");
+      // Hard-coded admin bypass
+      if (email === 'urbanpragati@gmail.com' && password === 'urbanpragati') {
+        localStorage.setItem('userToken', 'admin-token');
+        localStorage.setItem('userRole', 'admin');
+        localStorage.setItem('userData', JSON.stringify({ name: 'Admin', displayName: 'Admin', uid: 'admin' }));
+        navigate('/admin');
         return;
       }
 
-      // ✅ NORMAL FIREBASE LOGIN
-      const { user } = await loginUser(email, password);
-      token = await user.getIdToken();
-      const uid = user.uid;
+      // Firebase login — auto-detects role
+      const { user, userData, role } = await loginUser(email, password);
+      const token = await user.getIdToken();
 
-      // FIRESTORE ROLE CHECK
-      const citizenDoc = await getDoc(doc(db, "citizens", uid));
+      const fullUserData = { ...userData, uid: user.uid, email: user.email };
 
-      if (citizenDoc.exists()) {
-        role = "citizen";
-        userData = citizenDoc.data();
-      } else {
-        const workerDoc = await getDoc(doc(db, "workers", uid));
+      localStorage.setItem('userToken', token);
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('userData', JSON.stringify(fullUserData));
 
-        if (workerDoc.exists()) {
-          role = "worker";
-          userData = workerDoc.data();
-        } else {
-          throw new Error("User role not found.");
-        }
-      }
-
-      localStorage.setItem("userToken", token);
-      localStorage.setItem("userRole", role);
-      localStorage.setItem("userData", JSON.stringify(userData));
-
-      if (role === "citizen") navigate("/citizen-dashboard");
-      else if (role === "worker") navigate("/worker");
+      if (role === 'citizen') navigate('/citizen-dashboard');
+      else if (role === 'worker') navigate('/worker');
+      else navigate('/admin');
 
     } catch (err) {
-      console.error(err);
-      setError("Failed to login. Please check your credentials.");
+      console.error('[LoginPage] Login error:', err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password. Please try again.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Too many failed attempts. Please wait and try again.');
+      } else {
+        setError(err.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
   };
-
-  const [viewPassword, setViewPassword] = useState(false);
 
   return (
     <div className="login-page">
@@ -94,9 +73,7 @@ function LoginPage() {
         <div className="login-hero__content">
           <div className="login-hero__badge">Government of India</div>
           <h1 className="login-hero__title">Urban Pragati</h1>
-          <p className="login-hero__tagline">
-            Empowering Citizens, Improving Cities
-          </p>
+          <p className="login-hero__tagline">Empowering Citizens, Improving Cities</p>
           <div className="login-hero__stats">
             <div className="login-stat">
               <span className="login-stat__num">2.4M+</span>
@@ -122,38 +99,61 @@ function LoginPage() {
           </div>
 
           <form className="login-form" onSubmit={handleLogin} noValidate>
-            {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
+            {error && (
+              <div className="login-error-box" role="alert">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                {error}
+              </div>
+            )}
 
             <div className="form-group">
-              <label htmlFor="email" className="form-label">Email / Phone</label>
+              <label htmlFor="login-email" className="form-label">Email Address</label>
               <input
-                id="email"
+                id="login-email"
                 type="email"
                 className="form-input"
                 placeholder="yourname@example.com"
                 autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="password" className="form-label">Password</label>
+              <label htmlFor="login-password" className="form-label">Password</label>
               <div className="input-eye-wrap">
                 <input
-                  id="password"
-                  type={viewPassword ? "text" : "password"}
+                  id="login-password"
+                  type={viewPassword ? 'text' : 'password'}
                   className="form-input"
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
                 />
-                <button type="button" className="eye-btn" aria-label="Toggle password visibility" onClick={() => { setViewPassword(!viewPassword) }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
+                <button
+                  type="button"
+                  className="eye-btn"
+                  aria-label={viewPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setViewPassword(!viewPassword)}
+                >
+                  {viewPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
@@ -162,7 +162,9 @@ function LoginPage() {
               <label className="check-label">
                 <input type="checkbox" /> Remember me
               </label>
-              <a href="#forgot" className="login-link">Forgot Password?</a>
+              <button type="button" className="login-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}>
+                Forgot Password?
+              </button>
             </div>
 
             <button
@@ -171,13 +173,25 @@ function LoginPage() {
               className="btn btn-primary btn-lg"
               style={{ width: '100%', justifyContent: 'center' }}
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? (
+                <>
+                  <span className="login-spinner" aria-hidden="true" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
+
           <p className="signup-cta">
-            New user?{" "}
+            New user?{' '}
             <Link to="/signup" className="login-link">Create an account</Link>
           </p>
+
+          <div className="login-role-hint">
+            <span>Admin access uses a separate credentials system</span>
+          </div>
         </div>
       </main>
     </div>
