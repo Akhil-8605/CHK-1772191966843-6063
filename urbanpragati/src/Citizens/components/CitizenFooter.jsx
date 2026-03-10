@@ -12,15 +12,6 @@ const quickLinks = [
   { to: '/citizen/development',  label: 'Development Plans' },
 ];
 
-const supportLinks = [
-  { to: '/citizen/feedback',     label: 'Submit Feedback'   },
-  { to: '/citizen/best-citizen', label: 'Best Citizen'      },
-  { to: '/login',                label: 'Login / Register'  },
-  { href: '#help',               label: 'Help & Support'    },
-  { href: '#privacy',            label: 'Privacy Policy'    },
-  { href: '#rti',                label: 'RTI Information'   },
-];
-
 function CitizenFooter() {
   return (
     <footer className="cfooter" role="contentinfo">
@@ -60,20 +51,6 @@ function CitizenFooter() {
           </ul>
         </nav>
 
-        <nav className="cfooter__col" aria-label="Support links">
-          <h3 className="cfooter__col-title">Support</h3>
-          <ul role="list">
-            {supportLinks.map((l, i) => (
-              <li key={i}>
-                {l.to
-                  ? <Link to={l.to} className="cfooter__link">{l.label}</Link>
-                  : <a href={l.href} className="cfooter__link">{l.label}</a>
-                }
-              </li>
-            ))}
-          </ul>
-        </nav>
-
         <div className="cfooter__col">
           <h3 className="cfooter__col-title">Contact</h3>
           <address className="cfooter__contact">
@@ -81,14 +58,14 @@ function CitizenFooter() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.97 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012.88 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
               </svg>
-              <span>1800-XXX-XXXX (Toll Free)</span>
+              <span>1234567890</span>
             </div>
             <div className="cfooter__contact-item">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                 <polyline points="22,6 12,13 2,6"/>
               </svg>
-              <span>support@urbanpragati.gov.in</span>
+              <span>urbanpragati@gmail.com</span>
             </div>
             <div className="cfooter__contact-item">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -99,24 +76,12 @@ function CitizenFooter() {
             </div>
           </address>
 
-          <div className="cfooter__newsletter">
-            <p className="cfooter__newsletter-label">Get city updates</p>
-            <div className="cfooter__newsletter-row">
-              <input type="email" placeholder="your@email.com" className="cfooter__newsletter-input" aria-label="Email for newsletter" />
-              <button className="btn btn-primary btn-sm">Subscribe</button>
-            </div>
-          </div>
         </div>
       </div>
 
       <div className="cfooter__bottom">
         <div className="container cfooter__bottom-inner">
-          <p>© 2025 Urban Pragati. All rights reserved. Government of India.</p>
-          <div className="cfooter__bottom-links">
-            <a href="#terms" className="cfooter__bottom-link">Terms</a>
-            <a href="#privacy" className="cfooter__bottom-link">Privacy</a>
-            <a href="#accessibility" className="cfooter__bottom-link">Accessibility</a>
-          </div>
+          <p>© 2026 Urban Pragati. All rights reserved. Government of India.</p>
         </div>
       </div>
     </footer>

@@ -1,5 +1,3 @@
-/* CitizenNavbar.css */
-
 .cnavbar {
   position: sticky;
   top: 0;
@@ -7,7 +5,6 @@
   background: var(--color-white);
   box-shadow: 0 1px 12px rgba(0,0,0,0.06);
 }
-
 .cnavbar__inner {
   display: flex;
   align-items: center;
@@ -15,24 +12,20 @@
   height: 68px;
   gap: var(--space-6);
 }
-
 .cnavbar__logo {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
 }
-
 .cnavbar__logo:hover .cnavbar__brand-name {
   color: var(--color-saffron-dark);
 }
-
 .cnavbar__brand {
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
-
 .cnavbar__brand-name {
   font-family: var(--font-heading);
   font-size: var(--text-base);
@@ -41,14 +34,12 @@
   line-height: 1;
   transition: color var(--transition-fast);
 }
-
 .cnavbar__brand-sub {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
   line-height: 1;
   letter-spacing: 0.02em;
 }
-
 .cnavbar__links {
   display: flex;
   align-items: center;
@@ -56,7 +47,6 @@
   list-style: none;
   flex-wrap: wrap;
 }
-
 .cnavbar__link {
   padding: 6px 12px;
   border-radius: var(--radius-sm);
@@ -66,25 +56,21 @@
   transition: all var(--transition-fast);
   white-space: nowrap;
 }
-
 .cnavbar__link:hover {
   background: var(--color-gray-50);
   color: var(--color-saffron);
 }
-
 .cnavbar__link--active {
   background: #FFF8F0;
   color: var(--color-saffron);
   font-weight: var(--fw-semibold);
 }
-
 .cnavbar__actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
 }
-
 .cnavbar__avatar {
   background: none;
   border: 1.5px solid var(--color-gray-100);
@@ -97,12 +83,10 @@
   justify-content: center;
   color: var(--color-gray-400);
 }
-
 .cnavbar__avatar:hover {
   border-color: var(--color-saffron);
   color: var(--color-saffron);
 }
-
 .cnavbar__hamburger {
   display: none;
   flex-direction: column;
@@ -112,7 +96,6 @@
   cursor: pointer;
   padding: var(--space-2);
 }
-
 .cnavbar__hamburger span {
   display: block;
   width: 22px;
@@ -121,7 +104,6 @@
   border-radius: var(--radius-full);
   transition: all var(--transition-base);
 }
-
 @media (max-width: 1024px) {
   .cnavbar__links {
     display: none;
@@ -138,26 +120,21 @@
     z-index: 99;
     gap: var(--space-1);
   }
-
   .cnavbar__links--open {
     display: flex;
   }
-
   .cnavbar__link {
     width: 100%;
     padding: 10px 14px;
     font-size: var(--text-sm);
   }
-
   .cnavbar__hamburger {
     display: flex;
   }
-
   .cnavbar__inner {
     position: relative;
   }
 }
-
 @media (max-width: 480px) {
   .cnavbar__actions .btn {
     display: none;

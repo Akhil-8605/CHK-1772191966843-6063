@@ -1,27 +1,103 @@
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import './WaterService.css';
 import CitizenNavbar from '../components/CitizenNavbar';
 import CitizenFooter from '../components/CitizenFooter';
 import ComplaintCard from '../components/ComplaintCard';
-import MapPlaceholder from '../components/MapPlaceholder';
-
-const placeholderComplaints = [
-  { id: 'WC001', title: 'No water supply since 3 days', location: 'Sector 14, Block B', date: '2026-06-01', status: 'Pending', image: null },
-  { id: 'WC002', title: 'Pipe leakage near main road', location: 'Gandhi Nagar, Ward 5', date: '2026-05-28', status: 'In Progress', image: null },
-  { id: 'WC003', title: 'Contaminated water supply', location: 'Nehru Colony, Zone 3', date: '2026-05-25', status: 'Resolved', image: null },
-];
-
+import { getAllComplaints, createComplaint } from '../../firebaseOperations/db';
 export default function WaterService() {
+  const [complaints, setComplaints] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    address: '',
+    description: '',
+    proofImage: null,
+    coordinates: { lat: 28.6139, lng: 77.209 } 
+  });
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
+  const fetchComplaints = async () => {
+    try {
+      const data = await getAllComplaints();
+      const mappedComplaints = data.map(c => ({
+        _id: c.id,
+        category: c.category || c.department,
+        status: c.status,
+        address: c.address,
+        createdAt: c.createdAt?.toDate ? c.createdAt.toDate().toISOString() : new Date().toISOString(),
+        coordinates: c.coordinates
+      }));
+      setComplaints(mappedComplaints.filter(c => c.category === 'Water'));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  const handleGetLocation = () => {
+    setLoadingLocation(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormData(prev => ({
+            ...prev,
+            coordinates: { lat: position.coords.latitude, lng: position.coords.longitude }
+          }));
+          setLoadingLocation(false);
+          alert('Location captured successfully!');
+        },
+        (error) => {
+          console.error(error);
+          setLoadingLocation(false);
+          alert('Failed to get location. Please ensure location services are enabled.');
+        }
+      );
+    } else {
+      setLoadingLocation(false);
+      alert('Geolocation is not supported by your browser.');
+    }
+  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.description || !formData.address) {
+      setError('Address and Description are required.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      const complaintData = {
+        category: 'Water',
+        department: 'Water',
+        description: formData.description,
+        address: formData.address,
+        coordinates: formData.coordinates,
+        name: formData.name,
+        phone: formData.phone
+      };
+      await createComplaint(complaintData);
+      alert('Complaint submitted successfully!');
+      setFormData({ name: '', phone: '', address: '', description: '', proofImage: null, coordinates: { lat: 28.6139, lng: 77.209 } });
+      fetchComplaints(); 
+    } catch (err) {
+      console.error(err);
+      setError('Network error submitting complaint.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
   return (
     <div className="water-service-page">
       <CitizenNavbar />
-
       <main className="water-main">
         <nav className="breadcrumb" aria-label="Breadcrumb">
           <a href="/">Home</a>
           <span className="breadcrumb-sep">›</span>
           <span>Water Supply Services</span>
         </nav>
-
         <header className="service-page-header water-header">
           <div className="service-header-icon">
             <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -34,7 +110,6 @@ export default function WaterService() {
             <p>Report water supply issues, pipe leakages, contamination, and request new connections.</p>
           </div>
         </header>
-
         <div className="service-two-col">
           <section className="service-left-col">
             <div className="service-info-card card">
@@ -45,43 +120,38 @@ export default function WaterService() {
               </div>
               <h2>Report a Water Issue</h2>
               <p>Fill in the details below to register your complaint. Our team will respond within 48 hours.</p>
-
-              <form className="service-form" onSubmit={e => e.preventDefault()} aria-label="Water complaint form">
+              <form className="service-form" onSubmit={handleSubmit} aria-label="Water complaint form">
+                {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
                 <div className="form-group">
                   <label htmlFor="w-name">Your Full Name</label>
-                  <input id="w-name" type="text" placeholder="e.g. Rajesh Kumar" />
+                  <input id="w-name" type="text" placeholder="e.g. Rajesh Kumar" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label htmlFor="w-phone">Mobile Number</label>
-                  <input id="w-phone" type="tel" placeholder="e.g. 9876543210" />
+                  <input id="w-phone" type="tel" placeholder="e.g. 9876543210" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="w-address">Address / Location</label>
-                  <input id="w-address" type="text" placeholder="Street, Ward, Sector" />
+                  <label htmlFor="w-address">Address / Location *</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input id="w-address" type="text" style={{ flex: 1 }} placeholder="Street, Ward, Sector" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                    <button type="button" className="btn btn-outline" onClick={handleGetLocation} disabled={loadingLocation}>
+                      {loadingLocation ? 'Locating...' : '📍 GPS'}
+                    </button>
+                  </div>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="w-issue">Issue Type</label>
-                  <select id="w-issue">
-                    <option value="">-- Select Issue --</option>
-                    <option>No water supply</option>
-                    <option>Pipe leakage</option>
-                    <option>Contaminated water</option>
-                    <option>New connection request</option>
-                    <option>Billing dispute</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="w-desc">Description</label>
-                  <textarea id="w-desc" rows={4} placeholder="Describe your issue in detail..." />
+                  <label htmlFor="w-desc">Description *</label>
+                  <textarea id="w-desc" rows={4} placeholder="Describe your issue in detail..." value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label htmlFor="w-photo">Upload Photo (optional)</label>
-                  <input id="w-photo" type="file" accept="image/*" className="file-input" />
+                  <input id="w-photo" type="file" accept="image/*" className="file-input" onChange={e => setFormData({ ...formData, proofImage: e.target.files[0] })} />
                 </div>
-                <button type="submit" className="btn btn-primary btn-full">Submit Complaint</button>
+                <button type="submit" disabled={submitting} className="btn btn-primary btn-full">
+                  {submitting ? 'Submitting...' : 'Submit Complaint'}
+                </button>
               </form>
             </div>
-
             <div className="service-mini-stats">
               <div className="mini-stat-card">
                 <span className="mini-stat-num">142</span>
@@ -97,22 +167,40 @@ export default function WaterService() {
               </div>
             </div>
           </section>
-
           <section className="service-right-col">
             <h2 className="section-heading">Recent Water Complaints</h2>
-            <div className="complaint-list">
-              {placeholderComplaints.map(c => (
-                <ComplaintCard key={c.id} complaint={c} />
+            <div className="complaint-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              {complaints.map(c => (
+                <ComplaintCard key={c._id} complaint={{
+                  id: c._id.slice(-6).toUpperCase(),
+                  title: c.category,
+                  location: c.address,
+                  date: new Date(c.createdAt).toLocaleDateString(),
+                  status: c.status
+                }} />
               ))}
+              {complaints.length === 0 && <p>No recent complaints found.</p>}
             </div>
             <div className="map-section">
-              <h3 className="section-heading sm">Complaint Hotspots</h3>
-              <MapPlaceholder />
+              <h3 className="section-heading sm" style={{ marginTop: '2rem' }}>Complaint Hotspots</h3>
+              <div style={{ height: 300, width: '100%', borderRadius: 8, overflow: 'hidden' }}>
+                <MapContainer center={[28.6139, 77.209]} zoom={11} style={{ height: "100%", width: "100%" }}>
+                  <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                  {complaints.filter(c => c.coordinates && c.coordinates.lat).map(c => (
+                    <Marker key={c._id} position={[c.coordinates.lat, c.coordinates.lng]}>
+                      <Popup>
+                        <strong>{c.category}</strong><br />
+                        {c.address}<br />
+                        Status: {c.status}
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              </div>
             </div>
           </section>
         </div>
       </main>
-
       <CitizenFooter />
     </div>
   );

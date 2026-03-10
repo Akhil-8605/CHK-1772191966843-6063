@@ -1,7 +1,3 @@
-/* HomePage.css */
-
-/* HERO */
-
 .cdash-hero {
   position: relative;
   min-height: 92vh;
@@ -10,9 +6,6 @@
   overflow: hidden;
   color: white;
 }
-
-/* Background */
-
 .cdash-hero__bg {
   position: absolute;
   inset: 0;
@@ -20,7 +13,6 @@
   height: 100%;
   object-fit: cover;
 }
-
 .cdash-hero__overlay {
   position: absolute;
   inset: 0;
@@ -30,20 +22,17 @@
       rgba(0, 87, 255, 0.35) 100%),
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.1), transparent 60%);
 }
-
 .cdash-hero__content {
   position: relative;
   z-index: 2;
   max-width: 1200px;
 }
-
 .cdash-hero-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 40px;
 }
-
 .cdash-hero__badge {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(8px);
@@ -52,7 +41,6 @@
   font-size: 12px;
   letter-spacing: .08em;
 }
-
 .cdash-hero__title {
   font-size: clamp(3rem, 6vw, 5rem);
   font-weight: 800;
@@ -60,21 +48,18 @@
   letter-spacing: -1px;
   color: white;
 }
-
 .cdash-hero__tagline {
   color: #ffb84d;
   font-weight: 600;
   font-size: 20px;
   margin-bottom: 10px;
 }
-
 .cdash-hero__sub {
   max-width: 560px;
   line-height: 1.6;
   opacity: .85;
   margin-bottom: 35px;
 }
-
 .btn-primary {
   padding: 14px 28px;
   background: linear-gradient(135deg, #ff7a18, #ffb347);
@@ -84,7 +69,6 @@
   color: white;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
-
 .btn-secondary {
   padding: 14px 28px;
   border: 1px solid rgba(255, 255, 255, .6);
@@ -92,18 +76,15 @@
   text-decoration: none;
   color: white;
 }
-
 .cdash-hero__ctas {
   display: flex;
   gap: 16px;
   margin-bottom: 45px;
 }
-
 .cdash-hero__stats {
   display: flex;
   gap: 60px;
 }
-
 .cdash-hero-stat {
   border: .5px solid white;
   border-radius: 12px;
@@ -111,18 +92,15 @@
   padding: 15px;
   margin: -15px;
 }
-
 .cdash-hero-stat__num {
   font-size: 30px;
   font-weight: 800;
   color: #ffb84d;
 }
-
 .cdash-hero-stat__label {
   font-size: 12px;
   opacity: .7;
 }
-
 .profile-avatar {
   width: 42px;
   height: 42px;
@@ -134,7 +112,6 @@
   font-weight: 700;
   cursor: pointer;
 }
-
 .profile-dropdown {
   position: absolute;
   top: 70px;
@@ -146,38 +123,30 @@
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
   padding: 10px 0;
 }
-
 .profile-dropdown-name {
   padding: 12px 16px;
   font-weight: 600;
 }
-
 .profile-item {
   display: block;
   padding: 10px 16px;
   text-decoration: none;
   color: #333;
 }
-
 .profile-item:hover {
   background: #f3f3f3;
 }
-
 .profile-divider {
   height: 1px;
   background: #eee;
   margin: 6px 0;
 }
-
 .logout {
   color: #e63946;
 }
-
-
 .cdash-section {
   padding: var(--space-16) 0;
 }
-
 .cdash-section-header {
   display: flex;
   align-items: flex-end;
@@ -185,18 +154,15 @@
   margin-bottom: var(--space-8);
   gap: var(--space-4);
 }
-
 .cdash-services-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-5);
 }
-
 .cdash-how {
   background: var(--color-white);
   padding: var(--space-16) 0;
 }
-
 .cdash-steps {
   display: flex;
   align-items: flex-start;
@@ -204,7 +170,6 @@
   gap: 0;
   flex-wrap: wrap;
 }
-
 .cdash-step {
   flex: 1;
   min-width: 180px;
@@ -216,7 +181,6 @@
   padding: var(--space-6) var(--space-4);
   position: relative;
 }
-
 .cdash-step__num {
   font-family: var(--font-heading);
   font-size: var(--text-xs);
@@ -226,7 +190,6 @@
   text-transform: uppercase;
   margin-bottom: var(--space-3);
 }
-
 .cdash-step__icon {
   font-size: 2.4rem;
   margin-bottom: var(--space-4);
@@ -240,7 +203,6 @@
   box-shadow: 0 4px 12px rgba(255, 111, 0, 0.15);
   border: 2px solid rgba(255, 111, 0, 0.15);
 }
-
 .cdash-step__title {
   font-family: var(--font-heading);
   font-size: var(--text-base);
@@ -248,13 +210,11 @@
   color: var(--color-text-heading);
   margin-bottom: var(--space-2);
 }
-
 .cdash-step__desc {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   line-height: 1.55;
 }
-
 .cdash-step__arrow {
   position: absolute;
   right: -12px;
@@ -263,74 +223,60 @@
   color: var(--color-gray-300);
   z-index: 1;
 }
-
 .cdash-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-8);
   align-items: start;
 }
-
 .cdash-complaints-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
-
 .cdash-leaderboard {
   background: var(--color-white);
   padding: var(--space-16) 0;
 }
-
 .cdash-lb-grid {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
-
 @media (max-width: 1200px) {
   .cdash-services-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
-
 @media (max-width: 900px) {
   .cdash-services-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-
   .cdash-2col {
     grid-template-columns: 1fr;
   }
-
   .cdash-steps {
     flex-direction: column;
     align-items: center;
   }
-
   .cdash-step__arrow {
     display: none;
   }
 }
-
 @media (max-width: 640px) {
   .cdash-services-grid {
     grid-template-columns: 1fr;
   }
-
   .cdash-hero {
     min-height: 420px;
   }
-
   .cdash-hero__stats {
     gap: var(--space-4);
   }
-
   .cdash-profile-bar__inner {
     flex-direction: column;
     align-items: flex-start;
   }
-
   .cdash-profile-stats {
     justify-content: flex-start;
     gap: var(--space-4);

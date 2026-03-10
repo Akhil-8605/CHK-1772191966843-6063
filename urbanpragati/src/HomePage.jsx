@@ -1,18 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import CitizenNavbar from './Citizens/components/CitizenNavbar';
 import CitizenFooter from './Citizens/components/CitizenFooter';
 import ServiceCard from './Citizens/components/ServiceCard';
 import ComplaintCard from './Citizens/components/ComplaintCard';
 import LeaderboardCard from './Citizens/components/LeaderboardCard';
-import MapPlaceholder from './Citizens/components/MapPlaceholder';
+import { getAllComplaints } from './firebaseOperations/db';
 import './HomePage.css';
-
-const recentComplaints = [
-  { id: 'C-2401', title: 'Water pipe burst on MG Road', location: 'MG Road, Sector 4', date: '10 Jan 2026', status: 'In Progress', dept: 'Water Dept.' },
-  { id: 'C-2398', title: 'Street light not working', location: 'Green Park, Block A', date: '8 Jan 2026', status: 'Pending', dept: 'Electricity' },
-  { id: 'C-2390', title: 'Garbage not collected for 3 days', location: 'Lajpat Nagar', date: '5 Jan 2026', status: 'Resolved', dept: 'Sanitation' },
-];
-
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+});
 const leaderboard = [
   { name: 'Priya Sharma', city: 'New Delhi', points: 1860, complaints: 48, verified: 42 },
   { name: 'Amit Patel', city: 'Mumbai', points: 1650, complaints: 41, verified: 35 },
@@ -20,60 +22,75 @@ const leaderboard = [
   { name: 'Rajesh Singh', city: 'Ahmedabad', points: 1210, complaints: 30, verified: 26 },
   { name: 'Sunita Nair', city: 'Hyderabad', points: 1080, complaints: 27, verified: 22 },
 ];
-
 const steps = [
   { num: '01', title: 'Register', desc: 'Create your free citizen account in minutes.', icon: '👤' },
   { num: '02', title: 'Report', desc: 'Log any civic issue with a photo and your location.', icon: '📷' },
   { num: '03', title: 'Track', desc: 'Watch real-time status updates as your complaint is resolved.', icon: '📡' },
   { num: '04', title: 'Rate & Earn', desc: 'Rate resolved issues and earn Pragati Points for being proactive.', icon: '⭐' },
 ];
-
 function HomePage() {
+  const [complaints, setComplaints] = useState([]);
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
+  const fetchComplaints = async () => {
+    try {
+      const data = await getAllComplaints();
+      const mappedComplaints = data.map(c => {
+        const dateStr = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString();
+        return {
+          id: c.id.slice(-6).toUpperCase(),
+          title: c.category || c.department,
+          location: c.address,
+          date: dateStr,
+          status: c.status,
+          dept: c.department || c.category,
+          lat: c.coordinates?.lat,
+          lng: c.coordinates?.lng
+        };
+      });
+      setComplaints(mappedComplaints);
+    } catch (err) {
+      console.error(err);
+    }
+  };
   return (
     <div className="cdash-page">
       <CitizenNavbar />
-
       <section className="cdash-hero" aria-labelledby="hero-title">
-
         <img
           src="https://images.unsplash.com/photo-1531219572328-a0171b4448a3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fGNpdHl8ZW58MHwwfDB8fHww"
           alt="Smart City"
           className="cdash-hero__bg"
         />
-
         <div className="cdash-hero__overlay" />
-
         <div className="container cdash-hero__content">
-
           <div className="cdash-hero-top">
             <div className="cdash-hero__badge">
               Government of India — Smart City Initiative
             </div>
           </div>
-
           <h1 className="cdash-hero__title" id="hero-title">
             Urban Pragati
           </h1>
-
           <p className="cdash-hero__tagline">
             Empowering Citizens, Improving Cities
           </p>
-
           <p className="cdash-hero__sub">
             Report civic issues, track resolutions, pay taxes, and vote on city
             projects — all in one unified digital platform.
           </p>
-
           <div className="cdash-hero__ctas">
-            <a href="#services" className="btn-primary">
-              Explore Services
-            </a>
-
-            <a href="/login" className="btn-secondary">
-              Login / Register
-            </a>
+            {localStorage.getItem('userToken') ? (
+              <a href="#services" className="btn-primary">
+                Explore Services
+              </a>
+            ) : (
+              <a href="/login" className="btn-primary">
+                Get Started by Login/Signup
+              </a>
+            )}
           </div>
-
           <div className="cdash-hero__stats">
             {[
               { num: "2.4M+", label: "Citizens Registered" },
@@ -86,12 +103,9 @@ function HomePage() {
               </div>
             ))}
           </div>
-
         </div>
       </section>
-
       <main>
-
         <section className="cdash-how" aria-labelledby="how-heading">
           <div className="container">
             <div className="text-center" style={{ marginBottom: 'var(--space-10)' }}>
@@ -117,7 +131,6 @@ function HomePage() {
             </div>
           </div>
         </section>
-
         <section className="cdash-section" aria-labelledby="complaints-heading">
           <div className="container">
             <div className="cdash-2col">
@@ -129,13 +142,13 @@ function HomePage() {
                   </div>
                   <button className="btn btn-outline btn-sm">View All</button>
                 </div>
-                <div className="cdash-complaints-list">
-                  {recentComplaints.map((c, i) => (
+                <div className="cdash-complaints-list" style={{ maxHeight: '360px', overflowY: 'auto' }}>
+                  {complaints.map((c, i) => (
                     <ComplaintCard key={i} complaint={c} />
                   ))}
+                  {complaints.length === 0 && <p>No recent complaints found.</p>}
                 </div>
               </div>
-
               <div>
                 <div className="cdash-section-header" style={{ marginBottom: 'var(--space-4)' }}>
                   <div>
@@ -143,12 +156,27 @@ function HomePage() {
                     <p className="section-subtitle">Issues near your location</p>
                   </div>
                 </div>
-                <MapPlaceholder height={360} />
+                <div style={{ height: 360, width: '100%', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
+                  <MapContainer center={[28.6139, 77.2090]} zoom={11} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer
+                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    />
+                    {complaints.filter(pin => pin.lat && pin.lng).map((pin) => (
+                      <Marker key={pin.id} position={[pin.lat, pin.lng]}>
+                        <Popup>
+                          <strong>{pin.title}</strong><br />
+                          {pin.location}<br />
+                          <span style={{ color: '#ff7a18' }}>{pin.status}</span>
+                        </Popup>
+                      </Marker>
+                    ))}
+                  </MapContainer>
+                </div>
               </div>
             </div>
           </div>
         </section>
-
         <section className="cdash-leaderboard" aria-labelledby="lb-heading">
           <div className="container">
             <div className="cdash-section-header" style={{ marginBottom: 'var(--space-6)' }}>
@@ -166,10 +194,8 @@ function HomePage() {
           </div>
         </section>
       </main>
-
       <CitizenFooter />
     </div>
   );
 }
-
 export default HomePage;

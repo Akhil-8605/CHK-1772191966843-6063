@@ -1,16 +1,86 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebase";
+import { loginUser } from '../../firebaseOperations/auth';
 import './LoginPage.css';
 import Modi from "../modi.webp";
 
-const roles = [
-  { id: 'citizen', label: 'Citizen', icon: '👤', desc: 'Access civic services & track complaints' },
-  { id: 'worker',  label: 'Worker',  icon: '🔧', desc: 'View assigned tasks and update status'     },
-  { id: 'admin',   label: 'Admin',   icon: '🏛️',  desc: 'Manage departments and oversee portal'    },
-];
-
 function LoginPage() {
-  const [activeRole, setActiveRole] = useState('citizen');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      setError("Please provide both email and password.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      let role = "";
+      let userData = null;
+      let token = "";
+
+      // ✅ ADMIN LOGIN FIRST (without firebase)
+      if (email === "urbanpragati@gmail.com" && password === "urbanpragati") {
+
+        role = "admin";
+        token = "admin-token"; // fake token for admin
+
+        localStorage.setItem("userToken", token);
+        localStorage.setItem("userRole", role);
+        localStorage.setItem("userData", JSON.stringify({ name: "Admin" }));
+
+        navigate("/admin");
+        return;
+      }
+
+      // ✅ NORMAL FIREBASE LOGIN
+      const { user } = await loginUser(email, password);
+      token = await user.getIdToken();
+      const uid = user.uid;
+
+      // FIRESTORE ROLE CHECK
+      const citizenDoc = await getDoc(doc(db, "citizens", uid));
+
+      if (citizenDoc.exists()) {
+        role = "citizen";
+        userData = citizenDoc.data();
+      } else {
+        const workerDoc = await getDoc(doc(db, "workers", uid));
+
+        if (workerDoc.exists()) {
+          role = "worker";
+          userData = workerDoc.data();
+        } else {
+          throw new Error("User role not found.");
+        }
+      }
+
+      localStorage.setItem("userToken", token);
+      localStorage.setItem("userRole", role);
+      localStorage.setItem("userData", JSON.stringify(userData));
+
+      if (role === "citizen") navigate("/citizen-dashboard");
+      else if (role === "worker") navigate("/worker");
+
+    } catch (err) {
+      console.error(err);
+      setError("Failed to login. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [viewPassword, setViewPassword] = useState(false);
 
   return (
     <div className="login-page">
@@ -51,26 +121,9 @@ function LoginPage() {
             <p className="login-header__sub">Sign in to continue to your portal</p>
           </div>
 
-          <div className="role-selector" role="tablist" aria-label="Select login role">
-            {roles.map(r => (
-              <button
-                key={r.id}
-                className={`role-tab ${activeRole === r.id ? 'role-tab--active' : ''}`}
-                onClick={() => setActiveRole(r.id)}
-                role="tab"
-                aria-selected={activeRole === r.id}
-              >
-                <span className="role-tab__icon" aria-hidden="true">{r.icon}</span>
-                <span className="role-tab__label">{r.label}</span>
-              </button>
-            ))}
-          </div>
+          <form className="login-form" onSubmit={handleLogin} noValidate>
+            {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
 
-          <p className="role-desc" aria-live="polite">
-            {roles.find(r => r.id === activeRole)?.desc}
-          </p>
-
-          <form className="login-form" onSubmit={e => e.preventDefault()} noValidate>
             <div className="form-group">
               <label htmlFor="email" className="form-label">Email / Phone</label>
               <input
@@ -79,6 +132,8 @@ function LoginPage() {
                 className="form-input"
                 placeholder="yourname@example.com"
                 autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
@@ -87,15 +142,17 @@ function LoginPage() {
               <div className="input-eye-wrap">
                 <input
                   id="password"
-                  type="password"
+                  type={viewPassword ? "text" : "password"}
                   className="form-input"
                   placeholder="Enter your password"
                   autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
-                <button type="button" className="eye-btn" aria-label="Toggle password visibility">
+                <button type="button" className="eye-btn" aria-label="Toggle password visibility" onClick={() => { setViewPassword(!viewPassword) }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
                   </svg>
                 </button>
               </div>
@@ -108,37 +165,19 @@ function LoginPage() {
               <a href="#forgot" className="login-link">Forgot Password?</a>
             </div>
 
-            <button type="submit" className="btn btn-primary btn-lg" style={{ width:'100%', justifyContent:'center' }}>
-              Sign In as {roles.find(r => r.id === activeRole)?.label}
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary btn-lg"
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
-
-          <div className="or-divider">
-            <span />
-            <span className="or-divider__text">or continue with</span>
-            <span />
-          </div>
-
-          <div className="social-row" role="group" aria-label="Social login options">
-            {['G', 'f', 'in'].map((s,i) => (
-              <button key={i} className="social-btn" aria-label={`Sign in with ${s === 'G' ? 'Google' : s === 'f' ? 'Facebook' : 'LinkedIn'}`}>
-                {s}
-              </button>
-            ))}
-          </div>
-
-          {activeRole === 'citizen' && (
-            <p className="signup-cta">
-              New citizen?{' '}
-              <Link to="/signup/citizen" className="login-link">Create an account</Link>
-            </p>
-          )}
-          {activeRole === 'worker' && (
-            <p className="signup-cta">
-              New worker?{' '}
-              <Link to="/signup/worker" className="login-link">Register here</Link>
-            </p>
-          )}
+          <p className="signup-cta">
+            New user?{" "}
+            <Link to="/signup" className="login-link">Create an account</Link>
+          </p>
         </div>
       </main>
     </div>
