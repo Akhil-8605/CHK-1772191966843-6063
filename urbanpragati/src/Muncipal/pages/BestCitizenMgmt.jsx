@@ -1,5 +1,4 @@
 import './BestCitizenMgmt.css';
-import AdminSidebar from '../components/AdminSidebar';
 import AdminNavbar from '../components/AdminNavbar';
 import { useState, useEffect } from 'react';
 import { getTopCitizens } from '../../firebaseOperations/db';
@@ -8,9 +7,16 @@ export default function BestCitizenMgmt() {
   const [citizensList, setCitizensList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = require('react-router-dom').useNavigate();
+
   useEffect(() => {
-    fetchData();
-  }, []);
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    if (userData.role === 'admin' && userData.department && userData.department !== 'Best Citizen') {
+      navigate('/admin');
+    } else {
+      fetchData();
+    }
+  }, [navigate]);
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -35,8 +41,7 @@ export default function BestCitizenMgmt() {
   };
   const top = citizensList.length > 0 ? citizensList[0] : null;
   return (
-    <div className="admin-layout">
-      <AdminSidebar />
+    <div className="admin-layout" style={{ gridTemplateColumns: '1fr' }}>
       <div className="admin-main">
         <AdminNavbar />
         <main className="admin-content">

@@ -5,7 +5,7 @@ import CitizenFooter from '../components/CitizenFooter';
 import { submitFeedback, getAllFeedbacks } from '../../firebaseOperations/db';
 import { addCitizenPoints } from '../../firebaseOperations/auth';
 
-const DEPARTMENTS = ['Water Supply', 'Electricity', 'Sanitation', 'Road Repair', 'Property Tax', 'Development', 'General'];
+const DEPARTMENTS = ['Water Dept', 'Electricity', 'Sanitation', 'Property tax', 'Road Repair', 'Development'];
 
 const EMPTY_FORM = { name: '', department: '', comment: '', rating: 0 };
 
@@ -110,7 +110,6 @@ export default function FeedbackPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) { setSubmitError('Please enter your name.'); return; }
-    if (!form.department) { setSubmitError('Please select a department.'); return; }
     if (!form.rating) { setSubmitError('Please select a star rating.'); return; }
     if (!form.comment.trim()) { setSubmitError('Please write your feedback.'); return; }
 
@@ -289,13 +288,12 @@ export default function FeedbackPage() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="fb-dept" className="form-label">Department *</label>
+                  <label htmlFor="fb-dept" className="form-label">Department (Optional)</label>
                   <select
                     id="fb-dept"
                     className="form-select"
                     value={form.department}
                     onChange={e => setForm({ ...form, department: e.target.value })}
-                    required
                   >
                     <option value="">-- Select Department --</option>
                     {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}

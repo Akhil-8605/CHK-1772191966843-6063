@@ -3,29 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { registerUser } from '../../firebaseOperations/auth';
 import './Signup.css';
 import Modi from '../modi.webp';
-import ImageKit from 'imagekit-javascript';
 
 const DEPARTMENTS = ['Water', 'Electricity', 'Road Repair', 'Property Tax', 'Sanitation', 'Development'];
 
-async function uploadToImageKit(file) {
-  const authRes = await fetch(`${process.env.REACT_APP_BASE_URL}/auth`);
-  const authData = await authRes.json();
-
-  const imagekit = new ImageKit({
-    publicKey: process.env.REACT_APP_IMAGEKIT_PUBLIC_KEY,
-    urlEndpoint: process.env.REACT_APP_IMAGEKIT_URL_ENDPOINT,
-  });
-
-  const result = await imagekit.upload({
-    file,
-    fileName: `worker_doc_${Date.now()}_${file.name}`,
-    token: authData.token,
-    signature: authData.signature,
-    expire: authData.expire,
-    folder: '/worker-documents',
-  });
-  return result.url;
-}
 
 function Signup() {
   const navigate = useNavigate();
@@ -44,11 +24,11 @@ function Signup() {
     department: '',
     zone: '',
     workingAddress: '',
+    adminDepartment: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [workerDocument, setWorkerDocument] = useState(null);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -71,7 +51,6 @@ function Signup() {
       if (!formData.workerId.trim()) return 'Worker ID is required.';
       if (!formData.department) return 'Department is required.';
       if (!formData.workingAddress.trim()) return 'Working address is required.';
-      if (!workerDocument) return 'Please upload your worker document.';
     }
     return null;
   };
@@ -105,16 +84,6 @@ function Signup() {
         extraData.department = formData.department;
         extraData.zone = formData.zone.trim();
         extraData.workingAddress = formData.workingAddress.trim();
-
-        // Upload document to ImageKit
-        try {
-          const docUrl = await uploadToImageKit(workerDocument);
-          extraData.workerDocument = docUrl;
-        } catch {
-          setError('Failed to upload worker document. Please try again.');
-          setLoading(false);
-          return;
-        }
       }
 
       const { user } = await registerUser(formData.email.trim(), formData.password, role, extraData);
@@ -128,7 +97,7 @@ function Signup() {
       setSuccess('Account created successfully! Redirecting...');
       setTimeout(() => {
         if (role === 'citizen') navigate('/citizen-dashboard');
-        else navigate('/worker');
+        else if (role === 'worker') navigate('/worker');
       }, 1200);
 
     } catch (err) {
@@ -237,10 +206,6 @@ function Signup() {
                 <select id="city" className="form-select" value={formData.city} onChange={handleChange} required>
                   <option value="">Select city</option>
                   <option>Solapur</option>
-                  <option>Pune</option>
-                  <option>Mumbai</option>
-                  <option>Nashik</option>
-                  <option>Nagpur</option>
                 </select>
               </div>
               <div className="form-group">
@@ -279,7 +244,6 @@ function Signup() {
                     <label htmlFor="zone" className="form-label">Assigned Zone</label>
                     <input id="zone" type="text" className="form-input" placeholder="North Zone" value={formData.zone} onChange={handleChange} />
                   </div>
-                </div>
                 <div className="form-group">
                   <label htmlFor="department" className="form-label">Department *</label>
                   <select id="department" className="form-select" value={formData.department} onChange={handleChange} required>
@@ -287,23 +251,7 @@ function Signup() {
                     {DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}
                   </select>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Upload Worker Document *</label>
-                  <label className={`file-upload-area ${workerDocument ? 'uploaded' : ''}`} htmlFor="workerDoc">
-                    {!workerDocument ? (
-                      <>
-                        <span className="file-upload-area__text">Click to upload or drag &amp; drop</span>
-                        <span className="file-upload-area__hint">PDF, JPG, PNG up to 5 MB</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="file-upload-success">Document Selected</span>
-                        <span className="file-upload-name">{workerDocument.name}</span>
-                      </>
-                    )}
-                    <input id="workerDoc" type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={(e) => setWorkerDocument(e.target.files[0])} />
-                  </label>
-                </div>
+              </div>
               </>
             )}
 
@@ -333,7 +281,7 @@ function Signup() {
                     Creating Account...
                   </>
                 ) : (
-                  role === 'worker' ? 'Register as Worker' : 'Create Citizen Account'
+                  role === 'citizen' ? 'Create Citizen Account' : 'Register as Worker'
                 )}
               </button>
               <Link to="/login" className="btn btn-outline btn-lg" style={{ flex: 1, justifyContent: 'center' }}>

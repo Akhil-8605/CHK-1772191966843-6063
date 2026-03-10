@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import './DeptPage.css';
-import AdminSidebar from '../components/AdminSidebar';
 import AdminNavbar from '../components/AdminNavbar';
 import ComplaintDetailCard from '../components/ComplaintDetailCard';
-import { getComplaintsByDepartment } from '../../firebaseOperations/db';
+import { listenComplaintsByDepartment, rejectComplaint, updateComplaintStatusWithNotification } from '../../firebaseOperations/db';
 
 export default function PropertyTaxDept() {
   const [selected, setSelected] = useState(0);
@@ -11,49 +10,62 @@ export default function PropertyTaxDept() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const navigate = require('react-router-dom').useNavigate();
+
+  const fetchData = () => {};
+
   useEffect(() => {
-    fetchData();
-  }, []);
+    let unsub = () => {};
+    const fetchInitial = async () => {
+      try {
+        setLoading(true);
+        unsub = listenComplaintsByDepartment('Property Tax', (data) => {
+          const mappedComplaints = data.map(c => {
+            const dateStr = c.createdAt?.toDate
+              ? c.createdAt.toDate().toLocaleDateString()
+              : new Date().toLocaleDateString();
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const data = await getComplaintsByDepartment('Property Tax');
+            return {
+              originalId: c.id,
+              id: c.id.slice(-6).toUpperCase(),
+              title: c.category || "Property Tax Issue",
+              citizen: c.userName || c.userEmail || "Citizen",
+              location: c.address || "Unknown",
+              date: dateStr,
+              status: c.status || "Pending",
+              dept: "Property Tax",
+              priority: c.priority || "Medium",
+              userId: c.userId || null,
+              imageUrl: c.imageUrl || null,
+              description: c.description || '',
+              phone: c.userPhone || c.phone || ''
+            };
+          });
+          setComplaintsList(mappedComplaints);
+          setLoading(false);
+        });
+      } catch (err) {
+        console.error(err);
+        setError('Could not load data.');
+        setLoading(false);
+      }
+    };
 
-      const mappedComplaints = data.map(c => {
-        const dateStr = c.createdAt?.toDate
-          ? c.createdAt.toDate().toLocaleDateString()
-          : new Date().toLocaleDateString();
-
-        return {
-          originalId: c.id,
-          id: c.id.slice(-6).toUpperCase(),
-          title: c.category || "Property Tax Issue",
-          citizen: c.userName || c.userEmail || "Citizen",
-          location: c.address || "Unknown",
-          date: dateStr,
-          status: c.status || "Pending",
-          dept: "Property Tax",
-          priority: c.priority || "Medium"
-        };
-      });
-
-      setComplaintsList(mappedComplaints);
-    } catch (err) {
-      console.error(err);
-      setError('Could not load data.');
-    } finally {
-      setLoading(false);
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    if (userData.role === 'admin' && userData.department && userData.department !== 'Property Tax') {
+      navigate('/admin');
+    } else {
+      fetchInitial();
     }
-  };
+    return () => unsub();
+  }, [navigate]);
 
   const active =
     complaintsList.length > 0 && complaintsList[selected]
       ? complaintsList[selected]
       : null;
   return (
-    <div className="admin-layout">
-      <AdminSidebar />
+    <div className="admin-layout" style={{ gridTemplateColumns: '1fr' }}>
       <div className="admin-main">
         <AdminNavbar />
         <main className="admin-content">
@@ -94,10 +106,16 @@ export default function PropertyTaxDept() {
                     <div className="dept-info-item"><span className="dept-info-label">Date Filed</span><span>{active.date}</span></div>
                     <div className="dept-info-item"><span className="dept-info-label">Priority</span><span>{active.priority}</span></div>
                   </div>
-                  <div className="dept-img-placeholder" aria-label="Document placeholder">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
-                    <span>Document / Receipt placeholder</span>
-                  </div>
+                  {active.imageUrl ? (
+                    <div className="dept-img-container" style={{ margin: '1rem 0', borderRadius: '8px', overflow: 'hidden' }}>
+                      <img src={active.imageUrl} alt="Complaint Evidence" style={{ width: '100%', maxHeight: '300px', objectFit: 'cover' }} />
+                    </div>
+                  ) : (
+                    <div className="dept-img-placeholder" aria-label="Document placeholder">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                      <span>Document / Receipt placeholder</span>
+                    </div>
+                  )}
                   <div className="dept-assign-section">
                     <h3 className="dept-section-title">Assign Officer</h3>
                     <div className="dept-assign-row">
@@ -123,8 +141,34 @@ export default function PropertyTaxDept() {
                     </ol>
                   </div>
                   <div className="dept-action-row">
-                    <button className="btn btn-secondary">Reject</button>
-                    <button className="btn btn-primary">Mark Resolved</button>
+                    <button 
+                      className="btn btn-secondary"
+                      onClick={async () => {
+                        const reason = prompt("Enter reason for rejection:");
+                        if (reason !== null) {
+                          await rejectComplaint(active.originalId, reason, active.userId);
+                          alert("Complaint rejected.");
+                        }
+                      }}
+                    >
+                      Reject
+                    </button>
+                    <button 
+                      className="btn btn-primary"
+                      onClick={async () => {
+                        if (window.confirm("Mark as resolved?")) {
+                          await updateComplaintStatusWithNotification(
+                            active.originalId, 
+                            "Resolved", 
+                            active.userId, 
+                            "Your issue has been verified and marked as Resolved."
+                          );
+                          alert("Complaint marked resolved.");
+                        }
+                      }}
+                    >
+                      Mark Resolved
+                    </button>
                   </div>
                 </>
               ) : (

@@ -47,10 +47,6 @@ function CitizenNavbar() {
                     Go to Dashboard
                   </Link>
 
-                  <Link to="/settings" className="profile-item">
-                    Settings
-                  </Link>
-
                   <div className="profile-divider" />
 
                   <button

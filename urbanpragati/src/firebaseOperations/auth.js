@@ -11,6 +11,10 @@ import {
     setDoc,
     serverTimestamp,
     updateDoc,
+    query,
+    collection,
+    where,
+    getDocs,
 } from 'firebase/firestore';
 
 // ─── REGISTER ───────────────────────────────────────────────────────────────
@@ -40,6 +44,14 @@ export const registerUser = async (email, password, role, extraData) => {
     if (role === 'worker') {
         baseData.isVerified = false;
         baseData.tasksCompleted = 0;
+        baseData.department = extraData.department || '';
+    }
+
+    // Admins get department
+    if (role === 'admin') {
+        baseData.department = extraData.department || '';
+        baseData.isVerified = false;
+        baseData.complaintsHandled = 0;
     }
 
     await setDoc(doc(db, collectionName, user.uid), baseData);
@@ -68,6 +80,23 @@ export const loginUser = async (email, password) => {
     }
 
     throw new Error('User record not found in any role collection.');
+};
+
+// ─── DETECT ADMIN BY EMAIL PATTERN ───────────────────────────────────────────
+export const isAdminEmail = (email) => {
+    // Pattern: urbanpragati.[department]@gmail.com
+    const adminEmailPattern = /^urbanpragati\.[a-z-]+@gmail\.com$/i;
+    return adminEmailPattern.test(email);
+};
+
+// ─── GET ADMIN DEPARTMENT FROM EMAIL ──────────────────────────────────────────
+export const getAdminDepartmentFromEmail = (email) => {
+    const match = email.match(/^urbanpragati\.([a-z-]+)@gmail\.com$/i);
+    if (match) {
+        const dept = match[1].replace(/-/g, ' ').toLowerCase();
+        return dept.charAt(0).toUpperCase() + dept.slice(1);
+    }
+    return '';
 };
 
 // ─── LOGOUT ──────────────────────────────────────────────────────────────────

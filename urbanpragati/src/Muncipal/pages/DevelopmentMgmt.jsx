@@ -1,45 +1,48 @@
 import { useState, useEffect } from 'react';
 import './DevelopmentMgmt.css';
-import AdminSidebar from '../components/AdminSidebar';
 import AdminNavbar from '../components/AdminNavbar';
-import { getComplaintsByDepartment } from '../../firebaseOperations/db';
+import { listenAllDevelopments } from '../../firebaseOperations/db';
 const statusClass = { Active: 'chip-inprogress', 'Under Review': 'chip-pending', Approved: 'chip-resolved', 'Pending Approval': 'chip-pending' };
 export default function DevelopmentMgmt() {
   const [proposalsList, setProposalsList] = useState([]);
   const [stats, setStats] = useState({ total: 0, approved: 0, active: 0, votes: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = require('react-router-dom').useNavigate();
+
   useEffect(() => {
-    fetchData();
-  }, []);
-  const fetchData = async () => {
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    if (userData.role === 'admin' && userData.department && userData.department !== 'Development') {
+      navigate('/admin');
+    } else {
+      fetchData();
+    }
+  }, [navigate]);
+  const fetchData = () => {
+    setLoading(true);
+    listenAllDevelopments((data) => {
+      const mappedProposals = data.map(d => ({
+        id: d.id.slice(-6).toUpperCase(),
+        title: d.title || "Development Proposal",
+        submitted: d.userName || "Citizen",
+        date: d.createdAt?.toDate ? d.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString(),
+        interested: d.interested_citizens ? d.interested_citizens.length : 0,
+        notInterested: d.not_interested_citizens ? d.not_interested_citizens.length : 0,
+        status: d.status || "Under Review"
+      }));
 
-    const dummyProposals = [
-      {
-        id: "PR-001",
-        title: "Construction of New Public Park in Ward 12",
-        submitted: "Rahul Sharma",
-        date: "2026-03-01",
-        interested: 842,
-        notInterested: 91,
-        status: "Under Review"
-      }
-    ];
-
-    setProposalsList(dummyProposals);
-
-    setStats({
-      total: dummyProposals.length,
-      approved: dummyProposals.filter(p => p.status === "Approved").length,
-      active: dummyProposals.filter(p => p.status === "Active" || p.status === "Under Review").length,
-      votes: dummyProposals.reduce((sum, p) => sum + p.interested + p.notInterested, 0)
+      setProposalsList(mappedProposals);
+      setStats({
+        total: mappedProposals.length,
+        approved: mappedProposals.filter(p => p.status === "Approved").length,
+        active: mappedProposals.filter(p => p.status === "Active" || p.status === "Under Review").length,
+        votes: mappedProposals.reduce((sum, p) => sum + p.interested + p.notInterested, 0)
+      });
+      setLoading(false);
     });
-
-    setLoading(false);
   };
   return (
-    <div className="admin-layout">
-      <AdminSidebar />
+    <div className="admin-layout" style={{ gridTemplateColumns: '1fr' }}>
       <div className="admin-main">
         <AdminNavbar />
         <main className="admin-content">

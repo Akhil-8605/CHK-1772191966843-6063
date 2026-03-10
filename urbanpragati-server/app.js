@@ -10,7 +10,6 @@ const imagekit = new ImageKit({
   urlEndpoint: process.env.URL_ENDPOINT,
 });
 
-// Allow cross-origin requests
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
@@ -25,7 +24,6 @@ app.get("/auth", (req, res) => {
   res.send(result);
 });
 
-// Use the environment port or default to 4000
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Live at Port ${PORT}`);

@@ -17,7 +17,6 @@ export default function BestCitizen() {
   const [citizens, setCitizens] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Current user from localStorage
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('userData') || '{}'); } catch { return {}; }
   })();
@@ -92,7 +91,7 @@ export default function BestCitizen() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" aria-hidden="true">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </svg>
-            You are currently ranked <strong>#{currentUserRank}</strong> with <strong>{currentUser.rewardPoints || 0} Pragati Points</strong>
+            You are currently ranked <strong>#{currentUserRank}</strong> with <strong>{currentUser.points || currentUser.rewardPoints || 0} Pragati Points</strong>
           </div>
         )}
 
@@ -132,7 +131,7 @@ export default function BestCitizen() {
                 <p className="bch-city">{topCitizen.city || 'India'}</p>
                 <div className="bch-stats">
                   <div className="bch-stat">
-                    <span className="bch-stat-num">{(topCitizen.rewardPoints || 0).toLocaleString()}</span>
+                    <span className="bch-stat-num">{(topCitizen.points || topCitizen.rewardPoints || 0).toLocaleString()}</span>
                     <span className="bch-stat-label">Points</span>
                   </div>
                   <div className="bch-stat-divider" aria-hidden="true" />
@@ -147,7 +146,7 @@ export default function BestCitizen() {
                   </div>
                 </div>
                 <div className="bch-badges">
-                  {(topCitizen.rewardPoints || 0) >= 500 && <span className="bch-badge-chip">Top Contributor</span>}
+                  {(topCitizen.points || topCitizen.rewardPoints || 0) >= 500 && <span className="bch-badge-chip">Top Contributor</span>}
                   {(topCitizen.totalComplaints || 0) >= 10 && <span className="bch-badge-chip">Quick Reporter</span>}
                   <span className="bch-badge-chip">Verified Citizen</span>
                 </div>
@@ -166,7 +165,7 @@ export default function BestCitizen() {
                       entry={{
                         name: c.displayName || c.name || 'Citizen',
                         city: c.city || 'India',
-                        points: c.rewardPoints || 0,
+                        points: c.points || c.rewardPoints || 0,
                         complaints: c.totalComplaints || 0,
                         verified: c.resolvedComplaints || 0,
                         avatar: c.photoURL || null,

@@ -72,7 +72,7 @@ function CitizenFooter() {
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
                 <circle cx="12" cy="10" r="3"/>
               </svg>
-              <span>New Delhi — 110001</span>
+              <span>Solapur</span>
             </div>
           </address>
 
@@ -81,7 +81,7 @@ function CitizenFooter() {
 
       <div className="cfooter__bottom">
         <div className="container cfooter__bottom-inner">
-          <p>© 2026 Urban Pragati. All rights reserved. Government of India.</p>
+          <p>© 2026 Urban Pragati by LowIQBoys. All rights reserved. Government of India.</p>
         </div>
       </div>
     </footer>

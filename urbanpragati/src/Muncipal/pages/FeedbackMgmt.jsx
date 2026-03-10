@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import './FeedbackMgmt.css';
-import AdminSidebar from '../components/AdminSidebar';
 import AdminNavbar from '../components/AdminNavbar';
-import { getAllFeedbacks } from '../../firebaseOperations/db';
+import { getFeedbacksByDepartment } from '../../firebaseOperations/db';
+import { getAdminDepartmentFromEmail } from '../../firebaseOperations/auth';
 function StarRating({ rating }) {
   return (
     <span className="star-rating" aria-label={`${rating} out of 5 stars`}>
@@ -18,13 +18,23 @@ export default function FeedbackMgmt() {
   const [ratingCounts, setRatingCounts] = useState({ 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = require('react-router-dom').useNavigate();
+
   useEffect(() => {
-    fetchData();
-  }, []);
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    if (userData.role === 'admin' && userData.department && userData.department !== 'Feedback') {
+      navigate('/admin');
+    } else {
+      fetchData();
+    }
+  }, [navigate]);
   const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await getAllFeedbacks();
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+      const adminDept = userData.department || getAdminDepartmentFromEmail(userData.email || '');
+      
+      const data = await getFeedbacksByDepartment(adminDept);
       const mappedFeedbacks = data.map(f => {
         const dateStr = f.createdAt?.toDate ? f.createdAt.toDate().toLocaleDateString() : 'Unknown Date';
         return {
@@ -56,8 +66,7 @@ export default function FeedbackMgmt() {
     }
   };
   return (
-    <div className="admin-layout">
-      <AdminSidebar />
+    <div className="admin-layout" style={{ gridTemplateColumns: '1fr' }}>
       <div className="admin-main">
         <AdminNavbar />
         <main className="admin-content">

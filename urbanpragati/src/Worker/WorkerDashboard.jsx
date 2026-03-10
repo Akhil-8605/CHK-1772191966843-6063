@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import './WorkerDashboard.css';
-import { getAllComplaints, updateComplaintStatus } from '../firebaseOperations/db';
+import { listenTasksByWorker, updateComplaintStatusWithNotification, submitWorkerQuotation } from '../firebaseOperations/db';
 const statusClass = { Pending: 'chip-pending', 'In Progress': 'chip-inprogress', Resolved: 'chip-resolved' };
 export default function WorkerDashboard() {
+  const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -11,17 +13,14 @@ export default function WorkerDashboard() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [newStatus, setNewStatus] = useState('');
   const [proofFile, setProofFile] = useState(null);
-  useEffect(() => {
-    const storedUser = localStorage.getItem('userData');
-    if (storedUser) {
-      setUserData(JSON.parse(storedUser));
-    }
-    fetchTasks();
-  }, []);
-  const fetchTasks = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllComplaints();
+  const [quotationForm, setQuotationForm] = useState({
+    estimatedCost: '',
+    description: '',
+    timeline: '',
+  }); 
+  const fetchTasks = (userId) => {
+    setLoading(true);
+    listenTasksByWorker(userId, (data) => {
       const mappedComplaints = data.map(c => ({
         _id: c.id,
         category: c.category || c.department,
@@ -29,39 +28,77 @@ export default function WorkerDashboard() {
         address: c.address,
         description: c.description,
         createdAt: c.createdAt?.toDate ? c.createdAt.toDate().toISOString() : new Date().toISOString(),
-        coordinates: c.coordinates
+        coordinates: c.coordinates,
+        userId: c.userId || null,
+        imageUrl: c.imageUrl || null,
+        citizenName: c.userName || 'Unknown',
+        citizenPhone: c.userPhone || c.phone || 'Unknown',
+        dept: c.department || c.dept || 'Unknown',
+        priority: c.priority || 'Medium',
       }));
       setTasks(mappedComplaints);
-    } catch (err) {
-      console.error(err);
-    } finally {
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('userData');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setUserData(parsedUser);
+      fetchTasks(parsedUser.uid);
+    } else {
       setLoading(false);
     }
-  };
+  }, []);
   const handleUpdateStatus = async (e) => {
     e.preventDefault();
     if (!newStatus) return alert('Please select a status');
     try {
-      await updateComplaintStatus(selectedTask._id, newStatus);
+      const message = newStatus === 'Resolved'
+        ? `Your complaint (${selectedTask.category}) has been marked as Resolved by the worker.`
+        : `The status of your complaint (${selectedTask.category}) has been updated to ${newStatus}.`;
+
+      await updateComplaintStatusWithNotification(selectedTask._id, newStatus, selectedTask.userId, message);
       alert('Status updated successfully!');
       setActiveModal(null);
       setProofFile(null);
       setNewStatus('');
-      fetchTasks();
     } catch (err) {
       alert('Error updating status');
     }
   };
+  const handleSubmitQuotation = async (e) => {
+    e.preventDefault();
+    if (!quotationForm.estimatedCost || !quotationForm.description) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    try {
+      const quotationData = {
+        ...quotationForm,
+        submittedAt: new Date(),
+      };
+      await submitWorkerQuotation(selectedTask._id, quotationData, selectedTask.userId);
+      alert('Quotation submitted successfully!');
+      setActiveModal(null);
+      setQuotationForm({ estimatedCost: '', description: '', timeline: '' });
+    } catch (err) {
+      console.error('[v0] Error submitting quotation:', err);
+      alert('Error submitting quotation');
+    }
+  };
+
   const pending = tasks.filter(t => t.status === 'Pending').length;
   const inProgress = tasks.filter(t => t.status === 'In Progress').length;
   const resolved = tasks.filter(t => t.status === 'Resolved').length;
   return (
     <div className="worker-page">
       <header className="worker-navbar">
-        <div className="worker-navbar-brand">
+        <a className="worker-navbar-brand" href='/' style={{textDecoration: "none"}}>
           <div className="worker-logo-dot" aria-hidden="true" />
           <span className="worker-brand-text">Urban Pragati — Worker Portal</span>
-        </div>
+        </a>
         <div className="worker-navbar-right">
           <span className="worker-greeting">Welcome, {userData?.displayName || 'Worker'}</span>
           <div className="worker-avatar" aria-label="User avatar">{userData?.displayName ? userData.displayName[0] : 'W'}</div>
@@ -114,10 +151,16 @@ export default function WorkerDashboard() {
                       <p style={{ fontSize: '0.85rem', color: '#666', width: '100%', marginTop: '5px' }}>{t.description}</p>
                     </div>
                     <div className="worker-task-actions">
+                      <button className="btn btn-primary btn-sm" onClick={() => navigate(`/worker/tasks/${t._id}`, { state: { task: t } })}>View Details</button>
                       {t.status !== 'Resolved' && (
-                        <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedTask(t); setActiveModal('update'); }}>
-                          Update Status
-                        </button>
+                        <>
+                          <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedTask(t); setActiveModal('update'); }}>
+                            Update Status
+                          </button>
+                          <button className="btn btn-outline btn-sm" onClick={() => { setSelectedTask(t); setActiveModal('quotation'); }}>
+                            Submit Quotation
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -135,8 +178,11 @@ export default function WorkerDashboard() {
                   <Marker key={t._id} position={[t.coordinates.lat, t.coordinates.lng]}>
                     <Popup>
                       <strong>{t.category}</strong><br />
+                      Citizen: {t.citizenName}<br />
+                      Phone: <a href={`tel:${t.citizenPhone}`}>{t.citizenPhone}</a><br />
                       {t.address}<br />
-                      Status: {t.status}
+                      Status: {t.status}<br />
+                      <button className="btn btn-outline btn-sm" style={{marginTop:'5px'}} onClick={() => navigate(`/worker/tasks/${t._id}`, { state: { task: t } })}>View Details</button>
                     </Popup>
                   </Marker>
                 ))}
@@ -166,6 +212,60 @@ export default function WorkerDashboard() {
               </div>
               <div className="worker-modal-actions">
                 <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>Submit</button>
+                <button type="button" className="btn btn-outline" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setActiveModal(null)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'quotation' && (
+        <div className="worker-modal-overlay">
+          <div className="worker-modal-content">
+            <h3>Submit Work Quotation</h3>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: '#666' }}>Task: {selectedTask?.category}</p>
+            <form onSubmit={handleSubmitQuotation}>
+              <div className="form-group">
+                <label className="form-label">Estimated Cost *</label>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ fontSize: '1.2rem', fontWeight: '600', color: '#666', marginRight: '0.5rem' }}>₹</span>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="e.g., 5000"
+                    min="0"
+                    step="100"
+                    value={quotationForm.estimatedCost}
+                    onChange={e => setQuotationForm({ ...quotationForm, estimatedCost: e.target.value })}
+                    required
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Work Description *</label>
+                <textarea
+                  className="form-input"
+                  placeholder="Describe the work to be performed..."
+                  rows="4"
+                  value={quotationForm.description}
+                  onChange={e => setQuotationForm({ ...quotationForm, description: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Estimated Timeline (Days)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="e.g., 3"
+                  min="1"
+                  value={quotationForm.timeline}
+                  onChange={e => setQuotationForm({ ...quotationForm, timeline: e.target.value })}
+                />
+              </div>
+              <div className="worker-modal-actions">
+                <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>Submit Quotation</button>
                 <button type="button" className="btn btn-outline" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setActiveModal(null)}>Cancel</button>
               </div>
             </form>

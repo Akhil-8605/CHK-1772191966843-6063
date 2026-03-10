@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { loginUser } from '../../firebaseOperations/auth';
+import { loginUser, getAdminDepartmentFromEmail } from '../../firebaseOperations/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import './LoginPage.css';
@@ -24,12 +24,30 @@ function LoginPage() {
     setError('');
 
     try {
-      // Hard-coded admin bypass
-      if (email === 'urbanpragati@gmail.com' && password === 'urbanpragati') {
-        localStorage.setItem('userToken', 'admin-token');
-        localStorage.setItem('userRole', 'admin');
-        localStorage.setItem('userData', JSON.stringify({ name: 'Admin', displayName: 'Admin', uid: 'admin' }));
-        navigate('/admin');
+      // Intercept Hardcoded Department Admin Login
+      const emailPattern = /^urbanpragati\.([a-z-]+)@gmail\.com$/i;
+      const match = email.match(emailPattern);
+      
+      if (match && password === 'urbanpragati') {
+        const deptSlug = match[1];
+        const departmentName = deptSlug.charAt(0).toUpperCase() + deptSlug.slice(1).replace('-', ' ');
+        const role = 'admin';
+        
+        const fullUserData = {
+          uid: `hardcoded-admin-${deptSlug}`,
+          email: email,
+          role: role,
+          department: departmentName,
+          displayName: `${departmentName} Admin`
+        };
+
+        const dummyToken = `dummy-token-${deptSlug}-${Date.now()}`;
+
+        localStorage.setItem('userToken', dummyToken);
+        localStorage.setItem('userRole', role);
+        localStorage.setItem('userData', JSON.stringify(fullUserData));
+
+        navigate(`/admin/${deptSlug}`);
         return;
       }
 
@@ -45,7 +63,17 @@ function LoginPage() {
 
       if (role === 'citizen') navigate('/citizen-dashboard');
       else if (role === 'worker') navigate('/worker');
-      else navigate('/admin');
+      else if (role === 'admin') {
+        const dept = userData.department || getAdminDepartmentFromEmail(email);
+        if (dept) {
+          const deptRoute = dept.toLowerCase().replace(/\s+/g, '-');
+          navigate(`/admin/${deptRoute}-dept`);
+        } else {
+          navigate('/admin');
+        }
+      } else {
+        navigate('/admin');
+      }
 
     } catch (err) {
       console.error('[LoginPage] Login error:', err);
@@ -188,10 +216,6 @@ function LoginPage() {
             New user?{' '}
             <Link to="/signup" className="login-link">Create an account</Link>
           </p>
-
-          <div className="login-role-hint">
-            <span>Admin access uses a separate credentials system</span>
-          </div>
         </div>
       </main>
     </div>

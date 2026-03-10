@@ -7,7 +7,7 @@ import CitizenFooter from './Citizens/components/CitizenFooter';
 import ServiceCard from './Citizens/components/ServiceCard';
 import ComplaintCard from './Citizens/components/ComplaintCard';
 import LeaderboardCard from './Citizens/components/LeaderboardCard';
-import { getAllComplaints } from './firebaseOperations/db';
+import { getAllComplaints, getTopCitizens, getAllFeedbacks } from './firebaseOperations/db';
 import './HomePage.css';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -15,13 +15,7 @@ L.Icon.Default.mergeOptions({
   iconUrl: require('leaflet/dist/images/marker-icon.png'),
   shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
-const leaderboard = [
-  { name: 'Priya Sharma', city: 'New Delhi', points: 1860, complaints: 48, verified: 42 },
-  { name: 'Amit Patel', city: 'Mumbai', points: 1650, complaints: 41, verified: 35 },
-  { name: 'Kavya Reddy', city: 'Bengaluru', points: 1420, complaints: 38, verified: 31 },
-  { name: 'Rajesh Singh', city: 'Ahmedabad', points: 1210, complaints: 30, verified: 26 },
-  { name: 'Sunita Nair', city: 'Hyderabad', points: 1080, complaints: 27, verified: 22 },
-];
+
 const steps = [
   { num: '01', title: 'Register', desc: 'Create your free citizen account in minutes.', icon: '👤' },
   { num: '02', title: 'Report', desc: 'Log any civic issue with a photo and your location.', icon: '📷' },
@@ -30,13 +24,21 @@ const steps = [
 ];
 function HomePage() {
   const [complaints, setComplaints] = useState([]);
+  const [citizens, setCitizens] = useState([]);
+  const [stats, setStats] = useState({
+    registered: 0,
+    resolved: 0,
+    rating: 0,
+  });
+
   useEffect(() => {
-    fetchComplaints();
+    fetchData();
   }, []);
-  const fetchComplaints = async () => {
+
+  const fetchData = async () => {
     try {
-      const data = await getAllComplaints();
-      const mappedComplaints = data.map(c => {
+      const compData = await getAllComplaints();
+      const mappedComplaints = compData.map(c => {
         const dateStr = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString();
         return {
           id: c.id.slice(-6).toUpperCase(),
@@ -50,6 +52,30 @@ function HomePage() {
         };
       });
       setComplaints(mappedComplaints);
+
+      const citData = await getTopCitizens();
+      setCitizens(citData);
+
+      const feedData = await getAllFeedbacks();
+      
+      const resolvedCount = compData.filter(c => c.status === 'Resolved' || c.status === 'Completed').length;
+      
+      let sumRating = 0;
+      let countRating = 0;
+      feedData.forEach(f => {
+        if (f.rating) {
+          sumRating += Number(f.rating);
+          countRating++;
+        }
+      });
+      const avgRating = countRating > 0 ? (sumRating / countRating).toFixed(1) : "0";
+
+      setStats({
+        registered: citData.length,
+        resolved: resolvedCount,
+        rating: avgRating,
+      });
+
     } catch (err) {
       console.error(err);
     }
@@ -93,9 +119,9 @@ function HomePage() {
           </div>
           <div className="cdash-hero__stats">
             {[
-              { num: "2.4M+", label: "Citizens Registered" },
-              { num: "98K+", label: "Issues Resolved" },
-              { num: "4.7★", label: "Average Rating" },
+              { num: stats.registered, label: "Citizens Registered" },
+              { num: stats.resolved, label: "Issues Resolved" },
+              { num: `${stats.rating}★`, label: "Average Rating" },
             ].map((s, i) => (
               <div key={i} className="cdash-hero-stat">
                 <span className="cdash-hero-stat__num">{s.num}</span>
@@ -187,8 +213,19 @@ function HomePage() {
               <a href="/citizen/best-citizen" className="btn btn-ghost btn-sm">Full Leaderboard</a>
             </div>
             <div className="cdash-lb-grid">
-              {leaderboard.map((entry, i) => (
-                <LeaderboardCard key={i} entry={entry} rank={i + 1} />
+              {citizens.map((c, i) => (
+                <LeaderboardCard 
+                  key={c.uid || i} 
+                  entry={{
+                    name: c.displayName || c.name || 'Citizen',
+                    city: c.city || 'India',
+                    points: c.points || c.rewardPoints || 0,
+                    complaints: c.totalComplaints || 0,
+                    verified: c.resolvedComplaints || 0,
+                    avatar: c.photoURL || null,
+                  }} 
+                  rank={i + 1} 
+                />
               ))}
             </div>
           </div>

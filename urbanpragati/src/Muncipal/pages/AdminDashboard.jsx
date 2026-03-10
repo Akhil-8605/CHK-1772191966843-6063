@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './AdminDashboard.css';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminNavbar from '../components/AdminNavbar';
 import DeptStatsCard from '../components/DeptStatsCard';
-import { getAllComplaints, assignComplaintToWorker, approveComplaint } from '../../firebaseOperations/db';
+import { getAllComplaints, assignComplaintToWorker, approveComplaint, getComplaintsByDepartment } from '../../firebaseOperations/db';
 const statusClass = {
   Pending: 'chip-pending',
   'In Progress': 'chip-inprogress',
@@ -24,6 +25,7 @@ const depts = [
   { name: 'Development', icon: '🏗️' }
 ];
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,9 +33,20 @@ export default function AdminDashboard() {
   const [selectedComp, setSelectedComp] = useState(null);
   const [workerId, setWorkerId] = useState('');
   const [points, setPoints] = useState('');
+  const [adminDepartment, setAdminDepartment] = useState('');
+
   useEffect(() => {
+    // Check user's department and redirect if applicable
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    if (userData.department) {
+      setAdminDepartment(userData.department);
+      // Redirect department admins to their specific dashboard
+      const deptRoute = userData.department.toLowerCase().replace(/\s+/g, '-');
+      navigate(`/admin/${deptRoute}`);
+    }
     fetchComplaints();
-  }, []);
+  }, [navigate]);
+
   const fetchComplaints = async () => {
     try {
       setLoading(true);
@@ -109,8 +122,8 @@ export default function AdminDashboard() {
         <main className="admin-content">
           <div className="admin-page-header">
             <div>
-              <h1 className="admin-page-title">Urban Pragati — Admin Dashboard</h1>
-              <p className="admin-page-sub">Overview of all departments and complaints</p>
+              <h1 className="admin-page-title">Urban Pragati — Central Admin Dashboard</h1>
+              <p className="admin-page-sub">System-wide overview of all departments and complaints</p>
             </div>
           </div>
           <div className="admin-summary-ribbon">

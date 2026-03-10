@@ -6,6 +6,7 @@ import Signup from './Auth/signup/Signup';
 
 import HomePage from './HomePage';
 import ProtectedRoute from './components/ProtectedRoute';
+import ChatBot from './ChatBot';
 
 import CitizenDashboard from './Citizens/pages/CitizenDashboard';
 import WaterService from './Citizens/pages/WaterService';
@@ -34,6 +35,7 @@ import WorkerTaskDetail from './Worker/WorkerTaskDetail';
 export default function App() {
   return (
     <Router>
+      <ChatBot />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/citizen-dashboard" element={<ProtectedRoute allowedRoles={['citizen']}><CitizenDashboard /></ProtectedRoute>} />
@@ -44,7 +46,7 @@ export default function App() {
         <Route path="/citizen/road-repair" element={<ProtectedRoute allowedRoles={['citizen']}><RoadRepair /></ProtectedRoute>} />
         <Route path="/citizen/development" element={<ProtectedRoute allowedRoles={['citizen']}><DevelopmentVoting /></ProtectedRoute>} />
         <Route path="/citizen/feedback" element={<ProtectedRoute allowedRoles={['citizen']}><FeedbackPage /></ProtectedRoute>} />
-        <Route path="/citizen/best-citizen" element={<ProtectedRoute allowedRoles={['citizen']}><BestCitizen /></ProtectedRoute>} />
+        <Route path="/citizen/best-citizen" element={<BestCitizen />} />
 
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/water" element={<ProtectedRoute allowedRoles={['admin']}><WaterDept /></ProtectedRoute>} />

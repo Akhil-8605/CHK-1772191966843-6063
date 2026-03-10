@@ -447,6 +447,28 @@ export const updateComplaintStatusWithNotification = async (
     throw error;
   }
 };
+export const resolveComplaintWithProof = async (complaintId, citizenId, proofUrl, resolutionMessage) => {
+  try {
+    const complaintRef = doc(db, "complaints", complaintId);
+    await updateDoc(complaintRef, {
+      status: "Resolved",
+      resolutionImage: proofUrl || null,
+      resolvedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (citizenId && resolutionMessage) {
+      await addNotificationToUser(citizenId, {
+        type: "success",
+        message: resolutionMessage,
+        complaintId,
+        proofUrl: proofUrl || null,
+      });
+    }
+    return true;
+  } catch (error) {
+    throw error;
+  }
+};
 
 export const assignComplaintToWorkerWithNotification = async (
   complaintId,
